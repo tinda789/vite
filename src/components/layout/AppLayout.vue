@@ -1,10 +1,6 @@
 <template>
     <div class="app-layout">
       <header class="header">
-        <div class="logo">
-          <img src="@/assets/logo.png" alt="Logo" class="logo-image" />
-          <span class="logo-text">Hệ thống quản lý</span>
-        </div>
         
         <nav class="main-nav">
           <router-link to="/" class="nav-item">Trang chủ</router-link>

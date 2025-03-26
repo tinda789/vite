@@ -31,5 +31,9 @@ export default {
   },
   updateUserRoles(id: number, roleNames: string[]) {
     return api.put(`/admin/users/${id}/roles`, roleNames)
-  }
+  },
+  // Thêm vào UserService.ts
+  getUserStats() {
+  return api.get('/admin/users/stats');
+}
 }

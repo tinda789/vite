@@ -92,10 +92,20 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   
+  // Trong src/router/index.ts
+{
+  path: '/admin/employees',
+  component: () => import('../views/admin/EmployeeManagement.vue'),
+  meta: { requiresAuth: true, requiresAdmin: true }
+},
   // Not found
   {
     path: '/:pathMatch(.*)*',
     component: () => import('../views/NotFound.vue')
+  },
+  {
+    path: '/debug',
+    component: () => import('../views/DebugUser.vue')
   }
 ]
 
