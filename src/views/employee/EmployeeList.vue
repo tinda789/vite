@@ -386,7 +386,6 @@
 <script lang="ts">
 import { defineComponent, ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Modal } from 'bootstrap'
 import AppLayout from '../../components/layout/AppLayout.vue'
 import { useAuthStore } from '../../store/auth'
 import EmployeeService from '../../services/EmployeeService'
