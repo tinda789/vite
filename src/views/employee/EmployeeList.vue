@@ -1,7 +1,11 @@
 <template>
   <app-layout>
+    <head>
+      
+    </head>
     <div class="container-fluid my-3">
       <!-- Header -->
+   
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Quản lý nhân viên</h1>
         <button v-if="isAdmin" class="btn btn-primary" @click="openCreateModal">
@@ -394,6 +398,7 @@ import CompanyService from '../../services/CompanyService'
 import DepartmentService from '../../services/DepartmentService'
 import PositionService from '../../services/PositionService'
 import TeamService from '../../services/TeamService'
+import { Modal } from 'bootstrap'; 
 
 export default defineComponent({
   name: 'EmployeeListView',
@@ -404,7 +409,6 @@ export default defineComponent({
     const router = useRouter()
     const authStore = useAuthStore()
     const employeeModal = ref<HTMLElement | null>(null)
-    let bsModal: Modal | null = null
     
     // Data refs
     const employees = ref<any[]>([])
@@ -426,7 +430,7 @@ export default defineComponent({
     const selectedDepartment = ref<number | null>(null)
     const statusFilter = ref('')
     const filteredEmployees = ref<any[]>([])
-    
+      let bsModal: Modal | null = null;
     // Form data
     const employeeForm = reactive({
       id: null as number | null,
