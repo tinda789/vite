@@ -418,24 +418,28 @@ export default defineComponent({
     };
     
     const saveUser = async () => {
-      saving.value = true;
+  saving.value = true;
+  try {
+    if (isEditing.value) {
+      await UserService.updateUser(userForm.id, userForm);
       
-      try {
-        if (isEditing.value) {
-          await UserService.updateUser(userForm.id, userForm);
-        } else {
-          await UserService.createUser(userForm);
-        }
-        
-        closeModal();
-        fetchUsers();
-      } catch (err) {
-        console.error('Failed to save user:', err);
-        error.value = 'Không thể lưu thông tin người dùng. Vui lòng thử lại sau.';
-      } finally {
-        saving.value = false;
+      // Cập nhật vai trò nếu đang chỉnh sửa
+      if (userForm.roles) {
+        await UserService.updateUserRoles(userForm.id, userForm.roles);
       }
-    };
+    } else {
+      await UserService.createUser(userForm);
+    }
+    
+    closeModal();
+    fetchUsers();
+  } catch (err) {
+    console.error('Failed to save user:', err);
+    error.value = 'Không thể lưu thông tin người dùng. Vui lòng thử lại sau.';
+  } finally {
+    saving.value = false;
+  }
+};
     
     const lockUser = async (user) => {
       if (confirm(`Bạn có chắc chắn muốn khóa tài khoản "${user.username}"?`)) {
