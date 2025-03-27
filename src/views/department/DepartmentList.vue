@@ -1,440 +1,474 @@
 <template>
-    <app-layout>
-      <div class="department-list-page">
-        <div class="page-header">
-          <h1>Quản lý phòng ban</h1>
-          <button v-if="isAdmin" class="btn-primary" @click="openCreateModal">
-            <i class="fas fa-plus"></i> Thêm phòng ban mới
-          </button>
+  <app-layout>
+    <div class="department-list-page">
+      <div class="page-header">
+        <h1>Quản lý phòng ban</h1>
+        <button v-if="isAdmin" class="btn-primary" @click="openCreateModal">
+          <i class="fas fa-plus"></i> Thêm phòng ban mới
+        </button>
+      </div>
+      
+      <div class="filters">
+        <div class="search-box">
+          <input 
+            type="text" 
+            placeholder="Tìm kiếm phòng ban..." 
+            v-model="searchQuery"
+            @input="filterDepartments"
+          />
+          <i class="fas fa-search"></i>
         </div>
         
-        <div class="filters">
-          <div class="search-box">
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm phòng ban..." 
-              v-model="searchQuery"
-              @input="filterDepartments"
-            />
-            <i class="fas fa-search"></i>
+        <div class="filter-options">
+          <select 
+            v-model="selectedCompany" 
+            @change="filterDepartments"
+            class="company-filter"
+          >
+            <option :value="null">Tất cả các công ty</option>
+            <option 
+              v-for="company in companies" 
+              :key="company.id" 
+              :value="company.id"
+            >
+              {{ company.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+      
+      <div v-if="loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Đang tải dữ liệu...</p>
+      </div>
+      
+      <div v-else-if="error" class="error-message">
+        {{ error }}
+      </div>
+      
+      <div v-else-if="filteredDepartments.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <i class="fas fa-building"></i>
+        </div>
+        <h3>Không tìm thấy phòng ban</h3>
+        <p v-if="searchQuery">Không có kết quả phù hợp với tìm kiếm của bạn.</p>
+        <p v-else>Chưa có phòng ban nào trong hệ thống.</p>
+        <button v-if="isAdmin" class="btn-primary" @click="openCreateModal">
+          Thêm phòng ban mới
+        </button>
+      </div>
+      
+      <div v-else class="department-grid">
+        <div 
+          v-for="department in filteredDepartments" 
+          :key="department.id" 
+          class="department-card"
+        >
+          <div class="department-info">
+            <h3 class="department-name">
+              {{ department.name }}
+              <span v-if="department.code" class="department-code">
+                ({{ department.code }})
+              </span>
+            </h3>
+            <p class="department-description" v-if="department.description">
+              {{ truncateDescription(department.description) }}
+            </p>
+            <div class="department-meta">
+              <span class="company-name">
+                <i class="fas fa-building"></i> 
+                {{ getCompanyName(department.companyId) }}
+              </span>
+              <span v-if="department.parentId" class="parent-department">
+                <i class="fas fa-sitemap"></i>
+                Trực thuộc: {{ getParentDepartmentName(department.parentId) }}
+              </span>
+            </div>
           </div>
           
-          <div class="filter-options">
-            <select 
-              v-model="selectedCompany" 
-              @change="filterDepartments"
-              class="company-filter"
-            >
-              <option :value="null">Tất cả các công ty</option>
-              <option 
-                v-for="company in companies" 
-                :key="company.id" 
-                :value="company.id"
-              >
-                {{ company.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-        
-        <div v-if="loading" class="loading-container">
-          <div class="spinner"></div>
-          <p>Đang tải dữ liệu...</p>
-        </div>
-        
-        <div v-else-if="error" class="error-message">
-          {{ error }}
-        </div>
-        
-        <div v-else-if="filteredDepartments.length === 0" class="empty-state">
-          <div class="empty-icon">
-            <i class="fas fa-building"></i>
-          </div>
-          <h3>Không tìm thấy phòng ban</h3>
-          <p v-if="searchQuery">Không có kết quả phù hợp với tìm kiếm của bạn.</p>
-          <p v-else>Chưa có phòng ban nào trong hệ thống.</p>
-          <button v-if="isAdmin" class="btn-primary" @click="openCreateModal">
-            Thêm phòng ban mới
-          </button>
-        </div>
-        
-        <div v-else class="department-grid">
-          <div 
-            v-for="department in filteredDepartments" 
-            :key="department.id" 
-            class="department-card"
-          >
-            <div class="department-info">
-              <h3 class="department-name">
-                {{ department.name }}
-                <span v-if="department.code" class="department-code">
-                  ({{ department.code }})
-                </span>
-              </h3>
-              <p class="department-description" v-if="department.description">
-                {{ truncateDescription(department.description) }}
-              </p>
-              <div class="department-meta">
-                <span class="company-name">
-                  <i class="fas fa-building"></i> 
-                  {{ getCompanyName(department.companyId) }}
-                </span>
-                <span v-if="department.parentId" class="parent-department">
-                  <i class="fas fa-sitemap"></i>
-                  Trực thuộc: {{ getParentDepartmentName(department.parentId) }}
-                </span>
-              </div>
-            </div>
-            
-            <div class="department-actions">
-              <router-link :to="`/departments/${department.id}`" class="btn-view">
-                <i class="fas fa-eye"></i> Chi tiết
-              </router-link>
-              <div class="dropdown" v-if="isAdmin">
-                <button class="btn-more" @click="toggleDropdown($event)">
-                  <i class="fas fa-ellipsis-v"></i>
-                </button>
-                <div class="dropdown-menu">
-                  <button @click="editDepartment(department)" class="dropdown-item">
-                    <i class="fas fa-edit"></i> Chỉnh sửa
-                  </button>
-                  <button 
-                    @click="deleteDepartment(department)" 
-                    class="dropdown-item text-danger"
-                  >
-                    <i class="fas fa-trash"></i> Xóa
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Modal thêm/chỉnh sửa phòng ban -->
-        <div v-if="showModal" class="modal-overlay" @click="closeModal">
-          <div class="modal-content" @click.stop>
-            <div class="modal-header">
-              <h2>{{ isEditing ? 'Chỉnh sửa phòng ban' : 'Thêm phòng ban mới' }}</h2>
-              <button class="modal-close" @click="closeModal">
-                <i class="fas fa-times"></i>
+          <div class="department-actions">
+            <router-link :to="`/departments/${department.id}`" class="btn-view">
+              <i class="fas fa-eye"></i> Chi tiết
+            </router-link>
+            <div class="dropdown" v-if="isAdmin">
+              <button class="btn-more" @click="toggleDropdown($event)">
+                <i class="fas fa-ellipsis-v"></i>
               </button>
-            </div>
-            
-            <div class="modal-body">
-              <form @submit.prevent="saveDepartment">
-                <div class="form-group">
-                  <label for="name">Tên phòng ban <span class="required">*</span></label>
-                  <input 
-                    type="text" 
-                    id="name" 
-                    v-model="departmentForm.name" 
-                    class="form-control" 
-                    required
-                  />
-                </div>
-                
-                <div class="form-group">
-                  <label for="code">Mã phòng ban</label>
-                  <input 
-                    type="text" 
-                    id="code" 
-                    v-model="departmentForm.code" 
-                    class="form-control"
-                  />
-                </div>
-                
-                <div class="form-group">
-                  <label for="description">Mô tả</label>
-                  <textarea 
-                    id="description" 
-                    v-model="departmentForm.description" 
-                    class="form-control"
-                  ></textarea>
-                </div>
-                
-                <div class="form-group">
-                  <label for="company">Công ty <span class="required">*</span></label>
-                  <select 
-                    id="company" 
-                    v-model="departmentForm.companyId" 
-                    class="form-control" 
-                    required
-                  >
-                    <option 
-                      v-for="company in companies" 
-                      :key="company.id" 
-                      :value="company.id"
-                    >
-                      {{ company.name }}
-                    </option>
-                  </select>
-                </div>
-                
-                <div class="form-group">
-                  <label for="parentDepartment">Phòng ban cha</label>
-                  <select 
-                    id="parentDepartment" 
-                    v-model="departmentForm.parentId" 
-                    class="form-control"
-                  >
-                    <option :value="null">Không có</option>
-                    <option 
-                      v-for="dept in departmentsForParent" 
-                      :key="dept.id" 
-                      :value="dept.id"
-                    >
-                      {{ dept.name }}
-                    </option>
-                  </select>
-                </div>
-                
-                <div class="form-actions">
-                  <button type="button" class="btn-cancel" @click="closeModal">Hủy bỏ</button>
-                  <button type="submit" class="btn-primary" :disabled="saving">
-                    {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
-                  </button>
-                </div>
-              </form>
+              <div class="dropdown-menu">
+                <button @click="editDepartment(department)" class="dropdown-item">
+                  <i class="fas fa-edit"></i> Chỉnh sửa
+                </button>
+                <button 
+                  @click="deleteDepartment(department)" 
+                  class="dropdown-item text-danger"
+                >
+                  <i class="fas fa-trash"></i> Xóa
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </app-layout>
-  </template>
-  
-  <script lang="ts">
-  import { defineComponent, ref, computed, reactive, onMounted } from 'vue'
-  import AppLayout from '../../components/layout/AppLayout.vue'
-  import { useAuthStore } from '../../store/auth'
-  import DepartmentService from '../../services/DepartmentService'
-  import CompanyService from '../../services/CompanyService'
-  
-  export default defineComponent({
-    name: 'DepartmentListView',
-    components: {
-      AppLayout
-    },
-    setup() {
-      const authStore = useAuthStore()
       
-      const departments = ref([])
-      const companies = ref([])
-      const loading = ref(true)
-      const error = ref('')
-      
-      const searchQuery = ref('')
-      const selectedCompany = ref(null)
-      const filteredDepartments = ref([])
-      
-      const showModal = ref(false)
-      const isEditing = ref(false)
-      const saving = ref(false)
-      
-      const departmentForm = reactive({
-        id: null,
-        name: '',
-        code: '',
-        description: '',
-        companyId: null,
-        parentId: null
-      })
-      
-      const isAdmin = computed(() => authStore.isAdmin)
-      
-      const departmentsForParent = computed(() => {
-        return departments.value.filter(dept => 
-          dept.id !== departmentForm.id && 
-          (!departmentForm.companyId || dept.companyId === departmentForm.companyId)
-        )
-      })
-      
-      // Lấy danh sách phòng ban và công ty
-      const fetchData = async () => {
-        loading.value = true
-        error.value = ''
-        
-        try {
-          const [departmentsResponse, companiesResponse] = await Promise.all([
-            DepartmentService.getAllDepartments(),
-            CompanyService.getAllCompanies()
-          ])
+      <!-- Modal thêm/chỉnh sửa phòng ban -->
+      <div v-if="showModal" class="modal-overlay" @click="closeModal">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h2>{{ isEditing ? 'Chỉnh sửa phòng ban' : 'Thêm phòng ban mới' }}</h2>
+            <button class="modal-close" @click="closeModal">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
           
-          departments.value = departmentsResponse.data
-          companies.value = companiesResponse.data
-          filterDepartments()
-        } catch (err) {
-          console.error('Failed to fetch data:', err)
-          error.value = 'Không thể tải dữ liệu. Vui lòng thử lại sau.'
-        } finally {
-          loading.value = false
-        }
-      }
+          <div class="modal-body">
+            <form @submit.prevent="saveDepartment">
+              <div class="form-group">
+                <label for="name">Tên phòng ban <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="name" 
+                  v-model="departmentForm.name" 
+                  class="form-control" 
+                  required
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="code">Mã phòng ban</label>
+                <input 
+                  type="text" 
+                  id="code" 
+                  v-model="departmentForm.code" 
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="description">Mô tả</label>
+                <textarea 
+                  id="description" 
+                  v-model="departmentForm.description" 
+                  class="form-control"
+                ></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="company">Công ty <span class="required">*</span></label>
+                <select 
+                  id="company" 
+                  v-model="departmentForm.companyId" 
+                  class="form-control" 
+                  required
+                >
+                  <option value="">Chọn công ty</option>
+                  <option 
+                    v-for="company in companies" 
+                    :key="company.id" 
+                    :value="company.id"
+                  >
+                    {{ company.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="parentDepartment">Phòng ban cha</label>
+                <select 
+                  id="parentDepartment" 
+                  v-model="departmentForm.parentId" 
+                  class="form-control"
+                >
+                  <option :value="null">Không có</option>
+                  <option 
+                    v-for="dept in departmentsForParent" 
+                    :key="dept.id" 
+                    :value="dept.id"
+                  >
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-actions">
+                <button type="button" class="btn-cancel" @click="closeModal">Hủy bỏ</button>
+                <button type="submit" class="btn-primary" :disabled="saving">
+                  {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </app-layout>
+</template>
+
+<script lang="ts">
+import { defineComponent, ref, computed, reactive, onMounted } from 'vue'
+import AppLayout from '../../components/layout/AppLayout.vue'
+import { useAuthStore } from '../../store/auth'
+import DepartmentService from '../../services/DepartmentService'
+import CompanyService from '../../services/CompanyService'
+
+// Define interfaces for the data types
+interface Company {
+  id: number;
+  name: string;
+  [key: string]: any;
+}
+
+interface Department {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+  companyId: number;
+  parentId?: number | null;
+  [key: string]: any;
+}
+
+interface DepartmentForm {
+  id: number | null;
+  name: string;
+  code: string;
+  description: string;
+  companyId: number | null;
+  parentId: number | null;
+  [key: string]: any;
+}
+
+export default defineComponent({
+  name: 'DepartmentListView',
+  components: {
+    AppLayout
+  },
+  setup() {
+    const authStore = useAuthStore()
+    
+    const departments = ref<Department[]>([])
+    const companies = ref<Company[]>([])
+    const loading = ref(true)
+    const error = ref('')
+    
+    const searchQuery = ref('')
+    const selectedCompany = ref<number | null>(null)
+    const filteredDepartments = ref<Department[]>([])
+    
+    const showModal = ref(false)
+    const isEditing = ref(false)
+    const saving = ref(false)
+    
+    const departmentForm = reactive<DepartmentForm>({
+      id: null,
+      name: '',
+      code: '',
+      description: '',
+      companyId: null,
+      parentId: null
+    })
+    
+    const isAdmin = computed(() => authStore.isAdmin)
+    
+    const departmentsForParent = computed(() => {
+      return departments.value.filter(dept => 
+        dept.id !== departmentForm.id && 
+        (!departmentForm.companyId || dept.companyId === departmentForm.companyId)
+      )
+    })
+    
+    // Lấy danh sách phòng ban và công ty
+    const fetchData = async () => {
+      loading.value = true
+      error.value = ''
       
-      // Lọc danh sách phòng ban
-      const filterDepartments = () => {
-        filteredDepartments.value = departments.value.filter(department => {
-          // Lọc theo công ty
-          if (selectedCompany.value && department.companyId !== selectedCompany.value) {
-            return false
-          }
-          
-          // Lọc theo từ khóa tìm kiếm
-          if (searchQuery.value) {
-            const query = searchQuery.value.toLowerCase()
-            return (
-              department.name.toLowerCase().includes(query) ||
-              (department.code && department.code.toLowerCase().includes(query))
-            )
-          }
-          
-          return true
-        })
-      }
-      
-      // Lấy tên công ty
-      const getCompanyName = (companyId) => {
-        const company = companies.value.find(c => c.id === companyId)
-        return company ? company.name : 'Không xác định'
-      }
-      
-      // Lấy tên phòng ban cha
-      const getParentDepartmentName = (parentId) => {
-        const parentDept = departments.value.find(d => d.id === parentId)
-        return parentDept ? parentDept.name : 'Không xác định'
-      }
-      
-      // Mở modal thêm phòng ban mới
-      const openCreateModal = () => {
-        isEditing.value = false
-        resetForm()
-        showModal.value = true
-      }
-      
-      // Mở modal chỉnh sửa phòng ban
-      const editDepartment = (department) => {
-        isEditing.value = true
+      try {
+        const [departmentsResponse, companiesResponse] = await Promise.all([
+          DepartmentService.getAllDepartments(),
+          CompanyService.getAllCompanies()
+        ])
         
-        // Điền thông tin phòng ban vào form
-        Object.keys(departmentForm).forEach(key => {
-          departmentForm[key] = department[key]
-        })
-        
-        showModal.value = true
-      }
-      
-      // Lưu thông tin phòng ban
-      const saveDepartment = async () => {
-        saving.value = true
-        
-        try {
-          if (isEditing.value) {
-            // Cập nhật phòng ban
-            await DepartmentService.updateDepartment(departmentForm.id, departmentForm)
-          } else {
-            // Tạo phòng ban mới
-            await DepartmentService.createDepartment(departmentForm)
-          }
-          
-          // Đóng modal và tải lại danh sách
-          closeModal()
-          fetchData()
-        } catch (err) {
-          console.error('Failed to save department:', err)
-          error.value = 'Không thể lưu thông tin phòng ban. Vui lòng thử lại sau.'
-        } finally {
-          saving.value = false
-        }
-      }
-      
-      // Xóa phòng ban
-      const deleteDepartment = async (department) => {
-        if (confirm(`Bạn có chắc chắn muốn xóa phòng ban "${department.name}"?`)) {
-          try {
-            await DepartmentService.deleteDepartment(department.id)
-            fetchData()
-          } catch (err) {
-            console.error('Failed to delete department:', err)
-            error.value = 'Không thể xóa phòng ban. Vui lòng thử lại sau.'
-          }
-        }
-      }
-      
-      // Đóng modal
-      const closeModal = () => {
-        showModal.value = false
-        resetForm()
-      }
-      
-      // Reset form
-      const resetForm = () => {
-        departmentForm.id = null
-        departmentForm.name = ''
-        departmentForm.code = ''
-        departmentForm.description = ''
-        departmentForm.companyId = null
-        departmentForm.parentId = null
-      }
-      
-      // Mở/đóng dropdown menu
-      const toggleDropdown = (event) => {
-        const dropdown = event.target.closest('.dropdown')
-        const menu = dropdown.querySelector('.dropdown-menu')
-        
-        document.querySelectorAll('.dropdown-menu').forEach(el => {
-          if (el !== menu) el.classList.remove('show')
-        })
-        
-        menu.classList.toggle('show')
-        
-        // Click outside to close
-        setTimeout(() => {
-          document.addEventListener('click', function closeDropdown(e) {
-            if (!dropdown.contains(e.target)) {
-              menu.classList.remove('show')
-              document.removeEventListener('click', closeDropdown)
-            }
-          })
-        }, 0)
-      }
-      
-      // Cắt ngắn mô tả
-      const truncateDescription = (text, maxLength = 100) => {
-        return text.length > maxLength 
-          ? text.substring(0, maxLength) + '...' 
-          : text
-      }
-      
-      // Tải dữ liệu khi component được mount
-      onMounted(fetchData)
-      
-      return {
-        departments,
-        companies,
-        filteredDepartments,
-        departmentsForParent,
-        loading,
-        error,
-        searchQuery,
-        selectedCompany,
-        showModal,
-        isEditing,
-        saving,
-        departmentForm,
-        isAdmin,
-        getCompanyName,
-        getParentDepartmentName,
-        filterDepartments,
-        openCreateModal,
-        editDepartment,
-        saveDepartment,
-        deleteDepartment,
-        closeModal,
-        toggleDropdown,
-        truncateDescription
+        departments.value = departmentsResponse.data
+        companies.value = companiesResponse.data
+        filterDepartments()
+      } catch (err) {
+        console.error('Failed to fetch data:', err)
+        error.value = 'Không thể tải dữ liệu. Vui lòng thử lại sau.'
+      } finally {
+        loading.value = false
       }
     }
-  })
-  </script>
+    
+    // Lọc danh sách phòng ban
+    const filterDepartments = () => {
+      filteredDepartments.value = departments.value.filter(department => {
+        // Lọc theo công ty
+        if (selectedCompany.value && department.companyId !== selectedCompany.value) {
+          return false
+        }
+        
+        // Lọc theo từ khóa tìm kiếm
+        if (searchQuery.value) {
+          const query = searchQuery.value.toLowerCase()
+          return (
+            department.name.toLowerCase().includes(query) ||
+            (department.code && department.code.toLowerCase().includes(query))
+          )
+        }
+        
+        return true
+      })
+    }
+    
+    // Lấy tên công ty
+    const getCompanyName = (companyId: number): string => {
+      const company = companies.value.find(c => c.id === companyId)
+      return company ? company.name : 'Không xác định'
+    }
+    
+    // Lấy tên phòng ban cha
+    const getParentDepartmentName = (parentId: number): string => {
+      const parentDept = departments.value.find(d => d.id === parentId)
+      return parentDept ? parentDept.name : 'Không xác định'
+    }
+    
+    // Mở modal thêm phòng ban mới
+    const openCreateModal = () => {
+      isEditing.value = false
+      resetForm()
+      showModal.value = true
+    }
+    
+    // Mở modal chỉnh sửa phòng ban
+    const editDepartment = (department: Department) => {
+      isEditing.value = true
+      
+      // Điền thông tin phòng ban vào form
+      departmentForm.id = department.id
+      departmentForm.name = department.name
+      departmentForm.code = department.code || ''
+      departmentForm.description = department.description || ''
+      departmentForm.companyId = department.companyId
+      departmentForm.parentId = department.parentId || null
+      
+      showModal.value = true
+    }
+    
+    // Lưu thông tin phòng ban
+    const saveDepartment = async () => {
+      saving.value = true
+      
+      try {
+        if (isEditing.value && departmentForm.id) {
+          // Cập nhật phòng ban
+          await DepartmentService.updateDepartment(departmentForm.id, departmentForm)
+        } else {
+          // Tạo phòng ban mới
+          await DepartmentService.createDepartment(departmentForm)
+        }
+        
+        // Đóng modal và tải lại danh sách
+        closeModal()
+        fetchData()
+      } catch (err) {
+        console.error('Failed to save department:', err)
+        error.value = 'Không thể lưu thông tin phòng ban. Vui lòng thử lại sau.'
+      } finally {
+        saving.value = false
+      }
+    }
+    
+    // Xóa phòng ban
+    const deleteDepartment = async (department: Department) => {
+      if (confirm(`Bạn có chắc chắn muốn xóa phòng ban "${department.name}"?`)) {
+        try {
+          await DepartmentService.deleteDepartment(department.id)
+          fetchData()
+        } catch (err) {
+          console.error('Failed to delete department:', err)
+          error.value = 'Không thể xóa phòng ban. Vui lòng thử lại sau.'
+        }
+      }
+    }
+    
+    // Đóng modal
+    const closeModal = () => {
+      showModal.value = false
+      resetForm()
+    }
+    
+    // Reset form
+    const resetForm = () => {
+      departmentForm.id = null
+      departmentForm.name = ''
+      departmentForm.code = ''
+      departmentForm.description = ''
+      departmentForm.companyId = null
+      departmentForm.parentId = null
+    }
+    
+    // Mở/đóng dropdown menu
+    const toggleDropdown = (event: Event) => {
+      const dropdown = (event.target as HTMLElement).closest('.dropdown')
+      if (!dropdown) return
+      
+      const menu = dropdown.querySelector('.dropdown-menu')
+      if (!menu) return
+      
+      document.querySelectorAll('.dropdown-menu').forEach(el => {
+        if (el !== menu) el.classList.remove('show')
+      })
+      
+      menu.classList.toggle('show')
+      
+      // Click outside to close
+      setTimeout(() => {
+        document.addEventListener('click', function closeDropdown(e) {
+          if (!dropdown.contains(e.target as Node)) {
+            menu.classList.remove('show')
+            document.removeEventListener('click', closeDropdown)
+          }
+        })
+      }, 0)
+    }
+    
+    // Cắt ngắn mô tả
+    const truncateDescription = (text: string, maxLength = 100): string => {
+      return text.length > maxLength 
+        ? text.substring(0, maxLength) + '...' 
+        : text
+    }
+    
+    // Tải dữ liệu khi component được mount
+    onMounted(fetchData)
+    
+    return {
+      departments,
+      companies,
+      filteredDepartments,
+      departmentsForParent,
+      loading,
+      error,
+      searchQuery,
+      selectedCompany,
+      showModal,
+      isEditing,
+      saving,
+      departmentForm,
+      isAdmin,
+      getCompanyName,
+      getParentDepartmentName,
+      filterDepartments,
+      openCreateModal,
+      editDepartment,
+      saveDepartment,
+      deleteDepartment,
+      closeModal,
+      toggleDropdown,
+      truncateDescription
+    }
+  }
+})
+</script>
 
 <style scoped>
 .company-list-page {

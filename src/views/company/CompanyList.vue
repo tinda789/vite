@@ -232,10 +232,37 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import AppLayout from '../../components/layout/AppLayout.vue'
 import { useAuthStore } from '../../store/auth'
 import CompanyService from '../../services/CompanyService'
+
+interface Company {
+  id: number;
+  name: string;
+  logo: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+  taxCode: string | null;
+  businessCode: string | null;
+  establishedDate: string | null;
+  active: boolean;
+}
+
+interface CompanyForm {
+  id: number | null;
+  name: string;
+  logo: string;
+  email: string;
+  phone: string;
+  address: string;
+  website: string;
+  taxCode: string;
+  businessCode: string;
+  establishedDate: string;
+  active: boolean;
+}
 
 export default defineComponent({
   name: 'CompanyListView',
@@ -244,21 +271,20 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore()
-    const router = useRouter()
     
-    const companies = ref([])
-    const loading = ref(true)
-    const error = ref('')
+    const companies = ref<Company[]>([])
+    const loading = ref<boolean>(true)
+    const error = ref<string>('')
     
-    const searchQuery = ref('')
-    const showActiveOnly = ref(false)
-    const filteredCompanies = ref([])
+    const searchQuery = ref<string>('')
+    const showActiveOnly = ref<boolean>(false)
+    const filteredCompanies = ref<Company[]>([])
     
-    const showModal = ref(false)
-    const isEditing = ref(false)
-    const saving = ref(false)
+    const showModal = ref<boolean>(false)
+    const isEditing = ref<boolean>(false)
+    const saving = ref<boolean>(false)
     
-    const companyForm = reactive({
+    const companyForm = reactive<CompanyForm>({
       id: null,
       name: '',
       logo: '',
@@ -314,10 +340,10 @@ export default defineComponent({
     }
     
     // Tạo viết tắt từ tên công ty
-    const getCompanyInitials = (name) => {
+    const getCompanyInitials = (name: string): string => {
       if (!name) return 'CO'
       return name.split(' ')
-        .map(word => word[0])
+        .map((word: string) => word[0])
         .join('')
         .substring(0, 2)
         .toUpperCase()
@@ -331,15 +357,21 @@ export default defineComponent({
     }
     
     // Mở modal chỉnh sửa công ty
-    const editCompany = (company) => {
+    const editCompany = (company: Company) => {
       isEditing.value = true
       
       // Điền thông tin công ty vào form
-      Object.keys(companyForm).forEach(key => {
-        if (key in company) {
-          companyForm[key] = company[key]
-        }
-      })
+      companyForm.id = company.id
+      companyForm.name = company.name
+      companyForm.logo = company.logo || ''
+      companyForm.email = company.email || ''
+      companyForm.phone = company.phone || ''
+      companyForm.address = company.address || ''
+      companyForm.website = company.website || ''
+      companyForm.taxCode = company.taxCode || ''
+      companyForm.businessCode = company.businessCode || ''
+      companyForm.establishedDate = company.establishedDate || ''
+      companyForm.active = company.active
       
       showModal.value = true
     }
@@ -349,7 +381,7 @@ export default defineComponent({
       saving.value = true
       
       try {
-        if (isEditing.value) {
+        if (isEditing.value && companyForm.id !== null) {
           // Cập nhật công ty
           await CompanyService.updateCompany(companyForm.id, companyForm)
         } else {
@@ -369,7 +401,7 @@ export default defineComponent({
     }
     
     // Vô hiệu hóa công ty
-    const deactivateCompany = async (company) => {
+    const deactivateCompany = async (company: Company) => {
       if (confirm(`Bạn có chắc chắn muốn vô hiệu hóa công ty "${company.name}"?`)) {
         try {
           await CompanyService.deleteCompany(company.id)
@@ -382,7 +414,7 @@ export default defineComponent({
     }
     
     // Kích hoạt lại công ty
-    const activateCompany = async (company) => {
+    const activateCompany = async (company: Company) => {
       try {
         await CompanyService.restoreCompany(company.id)
         fetchCompanies()
@@ -414,9 +446,10 @@ export default defineComponent({
     }
     
     // Mở/đóng dropdown menu
-    const toggleDropdown = (event) => {
-      const dropdown = event.target.closest('.dropdown')
-      const menu = dropdown.querySelector('.dropdown-menu')
+    const toggleDropdown = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const dropdown = target.closest('.dropdown') as HTMLElement;
+      const menu = dropdown.querySelector('.dropdown-menu') as HTMLElement;
       
       document.querySelectorAll('.dropdown-menu').forEach(el => {
         if (el !== menu) el.classList.remove('show')
@@ -427,7 +460,7 @@ export default defineComponent({
       // Click outside to close
       setTimeout(() => {
         document.addEventListener('click', function closeDropdown(e) {
-          if (!dropdown.contains(e.target)) {
+          if (!dropdown.contains(e.target as Node)) {
             menu.classList.remove('show')
             document.removeEventListener('click', closeDropdown)
           }

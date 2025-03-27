@@ -179,6 +179,60 @@ import DepartmentService from '../../services/DepartmentService'
 import PositionService from '../../services/PositionService'
 import TeamService from '../../services/TeamService'
 
+// Define interfaces for our data types
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  profileImage?: string;
+  [key: string]: any;
+}
+
+interface Employee {
+  id: number;
+  employeeId?: string;
+  user: User;
+  companyId: number;
+  departmentId: number;
+  positionId: number;
+  managerId?: number;
+  jobTitle?: string;
+  workEmail?: string;
+  workPhone?: string;
+  hireDate?: string;
+  terminationDate?: string;
+  status: number;
+  secondaryDepartmentIds?: number[];
+  teamIds?: number[];
+  [key: string]: any;
+}
+
+interface Company {
+  id: number;
+  name: string;
+  [key: string]: any;
+}
+
+interface Department {
+  id: number;
+  name: string;
+  [key: string]: any;
+}
+
+interface Position {
+  id: number;
+  name: string;
+  [key: string]: any;
+}
+
+interface Team {
+  id: number;
+  name: string;
+  [key: string]: any;
+}
+
 export default defineComponent({
   name: 'EmployeeDetailView',
   components: {
@@ -188,13 +242,13 @@ export default defineComponent({
     const route = useRoute()
     const employeeId = ref(Number(route.params.id))
     
-    const employee = ref(null)
-    const company = ref(null)
-    const department = ref(null)
-    const position = ref(null)
-    const manager = ref(null)
-    const secondaryDepartments = ref([])
-    const teams = ref([])
+    const employee = ref<Employee | null>(null)
+    const company = ref<Company | null>(null)
+    const department = ref<Department | null>(null)
+    const position = ref<Position | null>(null)
+    const manager = ref<Employee | null>(null)
+    const secondaryDepartments = ref<Department[]>([])
+    const teams = ref<Team[]>([])
     
     const loading = ref(true)
     const error = ref('')
@@ -206,42 +260,43 @@ export default defineComponent({
         const employeeResponse = await EmployeeService.getEmployeeById(employeeId.value)
         employee.value = employeeResponse.data
         
-        // Lấy thông tin công ty
-        const companyResponse = await CompanyService.getCompanyById(employee.value.companyId)
-        company.value = companyResponse.data
-        
-        // Lấy thông tin phòng ban
-        const departmentResponse = await DepartmentService.getDepartmentById(employee.value.departmentId)
-        department.value = departmentResponse.data
-        
-        // Lấy thông tin vị trí
-        const positionResponse = await PositionService.getPositionById(employee.value.positionId)
-        position.value = positionResponse.data
-        
-        // Lấy thông tin quản lý
-        if (employee.value.managerId) {
-          const managerResponse = await EmployeeService.getEmployeeById(employee.value.managerId)
-          manager.value = managerResponse.data
+        if (employee.value) {
+          // Lấy thông tin công ty
+          const companyResponse = await CompanyService.getCompanyById(employee.value.companyId)
+          company.value = companyResponse.data
+          
+          // Lấy thông tin phòng ban
+          const departmentResponse = await DepartmentService.getDepartmentById(employee.value.departmentId)
+          department.value = departmentResponse.data
+          
+          // Lấy thông tin vị trí
+          const positionResponse = await PositionService.getPositionById(employee.value.positionId)
+          position.value = positionResponse.data
+          
+          // Lấy thông tin quản lý
+          if (employee.value.managerId) {
+            const managerResponse = await EmployeeService.getEmployeeById(employee.value.managerId)
+            manager.value = managerResponse.data
+          }
+          
+          // Lấy phòng ban phụ
+          if (employee.value.secondaryDepartmentIds?.length) {
+            const secondaryDeptPromises = employee.value.secondaryDepartmentIds.map(id => 
+              DepartmentService.getDepartmentById(id)
+            )
+            const secondaryDeptResponses = await Promise.all(secondaryDeptPromises)
+            secondaryDepartments.value = secondaryDeptResponses.map(resp => resp.data)
+          }
+          
+          // Lấy các nhóm
+          if (employee.value.teamIds?.length) {
+            const teamPromises = employee.value.teamIds.map(id => 
+              TeamService.getTeamById(id)
+            )
+            const teamResponses = await Promise.all(teamPromises)
+            teams.value = teamResponses.map(resp => resp.data)
+          }
         }
-        
-        // Lấy phòng ban phụ
-        if (employee.value.secondaryDepartmentIds?.length) {
-          const secondaryDeptPromises = employee.value.secondaryDepartmentIds.map(id => 
-            DepartmentService.getDepartmentById(id)
-          )
-          const secondaryDeptResponses = await Promise.all(secondaryDeptPromises)
-          secondaryDepartments.value = secondaryDeptResponses.map(resp => resp.data)
-        }
-        
-        // Lấy các nhóm
-        if (employee.value.teamIds?.length) {
-          const teamPromises = employee.value.teamIds.map(id => 
-            TeamService.getTeamById(id)
-          )
-          const teamResponses = await Promise.all(teamPromises)
-          teams.value = teamResponses.map(resp => resp.data)
-        }
-        
       } catch (err) {
         console.error('Lỗi tải chi tiết nhân viên:', err)
         error.value = 'Không thể tải thông tin nhân viên'
@@ -250,22 +305,22 @@ export default defineComponent({
       }
     }
     
-    const getEmployeeInitials = (fullName) => {
+    const getEmployeeInitials = (fullName: string): string => {
       if (!fullName) return 'NV'
       return fullName.split(' ')
-        .map(word => word[0])
+        .map((word: string) => word[0])
         .join('')
         .substring(0, 2)
         .toUpperCase()
     }
     
-    const formatDate = (dateString) => {
+    const formatDate = (dateString?: string): string => {
       return dateString 
         ? new Date(dateString).toLocaleDateString('vi-VN') 
         : 'Chưa xác định'
     }
     
-    const getStatusClass = (status) => {
+    const getStatusClass = (status: number): string => {
       switch(status) {
         case 1: return 'status-active'
         case 2: return 'status-inactive'
@@ -274,7 +329,7 @@ export default defineComponent({
       }
     }
     
-    const getStatusText = (status) => {
+    const getStatusText = (status: number): string => {
       switch(status) {
         case 1: return 'Đang làm việc'
         case 2: return 'Tạm ngưng'

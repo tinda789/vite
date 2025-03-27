@@ -316,6 +316,49 @@ import { useAuthStore } from '../../store/auth'
 import CompanyService from '../../services/CompanyService'
 import DepartmentService from '../../services/DepartmentService'
 
+interface Company {
+  id: number;
+  name: string;
+  logo: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+  taxCode: string | null;
+  businessCode: string | null;
+  establishedDate: string | null;
+  active: boolean;
+}
+
+interface CompanyForm {
+  id: number | null;
+  name: string;
+  logo: string;
+  email: string;
+  phone: string;
+  address: string;
+  website: string;
+  taxCode: string;
+  businessCode: string;
+  establishedDate: string;
+  active: boolean;
+}
+
+interface CompanyStats {
+  totalDepartments: number;
+  totalEmployees: number;
+  activeEmployeeCount?: number;
+}
+
+interface Department {
+  id: number;
+  name: string;
+  description: string | null;
+  code: string | null;
+  companyId: number;
+  parentId: number | null;
+}
+
 export default defineComponent({
   name: 'CompanyDetailView',
   components: {
@@ -329,21 +372,21 @@ export default defineComponent({
     const companyId = computed(() => Number(route.params.id))
     const isAdmin = computed(() => authStore.isAdmin)
     
-    const company = ref({})
-    const stats = ref({
+    const company = ref<Company>({} as Company)
+    const stats = ref<CompanyStats>({
       totalDepartments: 0,
       totalEmployees: 0
     })
-    const departments = ref([])
+    const departments = ref<Department[]>([])
     
-    const loading = ref(true)
-    const loadingDepartments = ref(true)
-    const error = ref('')
+    const loading = ref<boolean>(true)
+    const loadingDepartments = ref<boolean>(true)
+    const error = ref<string>('')
     
-    const showModal = ref(false)
-    const saving = ref(false)
+    const showModal = ref<boolean>(false)
+    const saving = ref<boolean>(false)
     
-    const companyForm = reactive({
+    const companyForm = reactive<CompanyForm>({
       id: null,
       name: '',
       logo: '',
@@ -367,7 +410,8 @@ export default defineComponent({
         company.value = response.data.company
         stats.value = {
           totalDepartments: response.data.departmentCount,
-          totalEmployees: response.data.employeeCount
+          totalEmployees: response.data.employeeCount,
+          activeEmployeeCount: response.data.activeEmployeeCount
         }
       } catch (err) {
         console.error('Failed to fetch company details:', err)
@@ -392,18 +436,17 @@ export default defineComponent({
     }
     
     // Tạo viết tắt từ tên công ty
-    // Tạo viết tắt từ tên công ty
-    const getCompanyInitials = (name) => {
+    const getCompanyInitials = (name: string): string => {
       if (!name) return 'CO'
       return name.split(' ')
-        .map(word => word[0])
+        .map((word: string) => word[0])
         .join('')
         .substring(0, 2)
         .toUpperCase()
     }
     
     // Format date
-    const formatDate = (dateString) => {
+    const formatDate = (dateString: string | null): string | null => {
       if (!dateString) return null
       const date = new Date(dateString)
       return date.toLocaleDateString('vi-VN')
@@ -412,11 +455,17 @@ export default defineComponent({
     // Mở modal chỉnh sửa
     const editCompany = () => {
       // Copy dữ liệu từ company sang form
-      Object.keys(companyForm).forEach(key => {
-        if (key in company.value) {
-          companyForm[key] = company.value[key]
-        }
-      })
+      companyForm.id = company.value.id
+      companyForm.name = company.value.name
+      companyForm.logo = company.value.logo || ''
+      companyForm.email = company.value.email || ''
+      companyForm.phone = company.value.phone || ''
+      companyForm.address = company.value.address || ''
+      companyForm.website = company.value.website || ''
+      companyForm.taxCode = company.value.taxCode || ''
+      companyForm.businessCode = company.value.businessCode || ''
+      companyForm.establishedDate = company.value.establishedDate || ''
+      companyForm.active = company.value.active
       
       showModal.value = true
     }
@@ -465,7 +514,7 @@ export default defineComponent({
     const createDepartment = () => {
       router.push({
         path: '/departments/create',
-        query: { companyId: companyId.value }
+        query: { companyId: companyId.value.toString() }
       })
     }
     
@@ -506,69 +555,27 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.company-detail-page {
+.company-list-page {
   width: 100%;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.back-link {
-  margin-bottom: 0.5rem;
-}
-
-.back-link a {
-  color: #666;
-  text-decoration: none;
-  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.back-link a:hover {
-  color: #4361EE;
+  margin-bottom: 2rem;
 }
 
 .page-header h1 {
   font-size: 1.8rem;
   color: #333;
-  margin: 0 0 0.5rem 0;
+  margin: 0;
 }
 
-.company-status {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.status-active {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-inactive {
-  background-color: #ffebee;
-  color: #d32f2f;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-secondary, .btn-danger, .btn-success, .btn-primary {
+.btn-primary {
   padding: 0.75rem 1.5rem;
+  background-color: #4361EE;
+  color: #fff;
   border: none;
   border-radius: 4px;
   font-weight: 500;
@@ -579,40 +586,47 @@ export default defineComponent({
   gap: 0.5rem;
 }
 
-.btn-secondary {
-  background-color: #e9ecef;
-  color: #495057;
-}
-
-.btn-secondary:hover {
-  background-color: #dee2e6;
-}
-
-.btn-danger {
-  background-color: #f44336;
-  color: #fff;
-}
-
-.btn-danger:hover {
-  background-color: #d32f2f;
-}
-
-.btn-success {
-  background-color: #4caf50;
-  color: #fff;
-}
-
-.btn-success:hover {
-  background-color: #388e3c;
-}
-
-.btn-primary {
-  background-color: #4361EE;
-  color: #fff;
-}
-
 .btn-primary:hover {
   background-color: #3a56d4;
+}
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 300px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  padding-left: 2.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.search-box i {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.checkbox-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
 }
 
 .loading-container {
@@ -645,182 +659,23 @@ export default defineComponent({
   border-radius: 8px;
 }
 
-.company-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-@media (max-width: 992px) {
-  .company-content {
-    grid-template-columns: 1fr;
-  }
-}
-
-.company-info-card, .company-stats-card {
-  background-color: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.card-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #eee;
-}
-
-.card-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #333;
-}
-
-.card-body {
-  padding: 1.5rem;
-}
-
-.company-logo {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-
-.company-logo img {
-  max-width: 200px;
-  max-height: 100px;
-  object-fit: contain;
-}
-
-.logo-placeholder {
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-  background-color: #4361EE;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  font-weight: 700;
-}
-
-.info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.info-item {
-  display: flex;
-  align-items: flex-start;
-}
-
-.info-label {
-  width: 150px;
-  color: #666;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.info-value {
-  flex: 1;
-  color: #333;
-}
-
-.info-value a {
-  color: #4361EE;
-  text-decoration: none;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 1.5rem;
-  background-color: #f8fafc;
-  border-radius: 8px;
-}
-
-.stat-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #4361EE;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  color: #666;
-  margin-bottom: 1rem;
-}
-
-.stat-link {
-  color: #4361EE;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.stat-link:hover {
-  text-decoration: underline;
-}
-
-.distribution-chart {
-  margin-top: 2rem;
-}
-
-.distribution-chart h3 {
-  font-size: 1rem;
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-.chart-placeholder {
-  height: 200px;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-}
-
-.departments-section {
-  margin-top: 2rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.section-header h2 {
-  font-size: 1.25rem;
-  color: #333;
-  margin: 0;
-}
-
-.view-all {
-  color: #4361EE;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
 .empty-state {
-  padding: 2rem;
   text-align: center;
+  padding: 3rem;
   background-color: #f8fafc;
   border-radius: 8px;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  color: #ccc;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  font-size: 1.25rem;
+  color: #333;
+  margin-bottom: 0.5rem;
 }
 
 .empty-state p {
@@ -828,70 +683,181 @@ export default defineComponent({
   margin-bottom: 1.5rem;
 }
 
-.departments-grid {
+.company-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 1.5rem;
 }
 
-.department-card {
+.company-card {
   background-color: #fff;
   border-radius: 8px;
-  padding: 1.5rem;
+  overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   display: flex;
-  gap: 1rem;
+  flex-direction: column;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.department-card:hover {
+.company-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.department-icon {
-  width: 40px;
-  height: 40px;
-  background-color: #edf2ff;
-  color: #4361EE;
-  border-radius: 8px;
+.company-card.inactive {
+  opacity: 0.7;
+}
+
+.company-logo {
+  height: 120px;
+  background-color: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-bottom: 1px solid #eee;
+}
+
+.company-logo img {
+  max-width: 80%;
+  max-height: 80%;
+  object-fit: contain;
+}
+
+.logo-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  background-color: #4361EE;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.company-info {
+  padding: 1.5rem;
+  flex-grow: 1;
+}
+
+.company-name {
   font-size: 1.25rem;
-}
-
-.department-content {
-  flex: 1;
-}
-
-.department-name {
-  font-size: 1.1rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
-.department-desc {
+.company-email, .company-phone {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   color: #666;
+  margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
-.department-link {
+.company-status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 0.75rem;
+}
+
+.status-active {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-inactive {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.company-actions {
+  display: flex;
+  border-top: 1px solid #eee;
+}
+
+.btn-view {
+  flex: 1;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #f8fafc;
   color: #4361EE;
   text-decoration: none;
-  font-size: 0.9rem;
   font-weight: 500;
+  transition: background-color 0.2s;
 }
 
-.department-link:hover {
-  text-decoration: underline;
+.btn-view:hover {
+  background-color: #edf2ff;
+}
+
+.btn-more {
+  padding: 0 1rem;
+  background: none;
+  border: none;
+  border-left: 1px solid #eee;
+  cursor: pointer;
+  color: #666;
+  transition: background-color 0.2s;
+}
+
+.btn-more:hover {
+  background-color: #f5f5f5;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: 200px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem 0;
+  display: none;
+  z-index: 10;
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #333;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f7fa;
+}
+
+.text-danger {
+  color: #d32f2f;
+}
+
+.text-success {
+  color: #2e7d32;
 }
 
 /* Modal styles */
@@ -1017,12 +983,8 @@ export default defineComponent({
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-  }
-  
-  .header-actions {
-    margin-top: 1rem;
+  .company-grid {
+    grid-template-columns: 1fr;
   }
   
   .form-row {
